@@ -54,6 +54,17 @@
     });
   };
 
+  var path = window.location.search;
+  console.log("init");
+  var room=path.match(/([1-9])+/g)[1]+""+path.match(/([1-9])+/g)[0];
+  if(path.match(/([1-9])+/g)[0]<path.match(/([1-9])+/g)[1]){
+    room = path.match(/([1-9])+/g)[0]+""+path.match(/([1-9])+/g)[1]
+  }
+  console.log(room)
+
+  eb.publish("logon.to.server", room);
+
+
   function send(event) {
     if (event.keyCode == 13 || event.which == 13) {
       var message = $('#input').val();

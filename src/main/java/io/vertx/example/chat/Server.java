@@ -35,19 +35,28 @@ public class Server extends AbstractVerticle {
 
     // Allow events for the designated addresses in/out of the event bus bridge
     BridgeOptions opts = new BridgeOptions()
-      .addInboundPermitted(new PermittedOptions().setAddress("chat.to.server"))
+            .addInboundPermitted(new PermittedOptions().setAddress("chat.to.server"))
+            .addInboundPermitted(new PermittedOptions().setAddress("logon.to.server"))
       .addOutboundPermitted(new PermittedOptions().setAddress("chat.to.client"));
 
     // Create the event bus bridge and add it to the router.
     SockJSHandler ebHandler = SockJSHandler.create(vertx).bridge(opts);
     router.route("/eventbus/*").handler(ebHandler);
 
-    // Create a router endpoint for the static content.
-    router.route().handler(StaticHandler.create());
+
+      router.route().handler(StaticHandler.create());
 
     // Start the web server and tell it to use the router to handle requests.
     vertx.createHttpServer().requestHandler(router::accept).listen(8080);
     EventBus eb = vertx.eventBus();
+
+    eb.consumer("logon.to.server").handler(message -> {
+      // Create a timestamp string
+      //String timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date.from(Instant.now()));
+      // Send the message back out to all clients with the timestamp prepended.
+      //eb.publish("chat.to.client", timestamp + ": " + "hi, and welcome to our domain, you must now complie to all of my commands");
+      System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body());
+    });
 
     // Register to listen for messages coming IN to the server
     eb.consumer("chat.to.server").handler(message -> {
@@ -57,6 +66,8 @@ public class Server extends AbstractVerticle {
       eb.publish("chat.to.client", timestamp + ": " + message.body());
       System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body());
     });
+
+
 
   }
 }
