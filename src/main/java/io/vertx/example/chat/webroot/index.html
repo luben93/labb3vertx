@@ -48,28 +48,24 @@
 <body>
 <script>
   var eb = new EventBus("/eventbus/");
+  var path = window.location.search;
+  var room=path.match(/([1-9])+/g)[1]+"."+path.match(/([1-9])+/g)[0];
+  var myroom=path.match(/([1-9])+/g)[0]+"."+path.match(/([1-9])+/g)[1];
+
   eb.onopen = function () {
-    eb.registerHandler("chat.to.client", function (err, msg) {
+    eb.registerHandler("chat.to.client."+myroom, function (err, msg) {
       $('#chat').append(msg.body + "\n");
     });
+    //eb.publish("logon.to.server",room);
   };
 
-  var path = window.location.search;
-  console.log("init");
-  var room=path.match(/([1-9])+/g)[1]+""+path.match(/([1-9])+/g)[0];
-  if(path.match(/([1-9])+/g)[0]<path.match(/([1-9])+/g)[1]){
-    room = path.match(/([1-9])+/g)[0]+""+path.match(/([1-9])+/g)[1]
-  }
-  console.log(room)
-
-  eb.publish("logon.to.server", room);
 
 
   function send(event) {
     if (event.keyCode == 13 || event.which == 13) {
       var message = $('#input').val();
       if (message.length > 0) {
-        eb.publish("chat.to.server", message);
+        eb.publish("chat.to.server", {message:message,room:room,myroom:myroom});
         $('#input').val("");
       }
     }

@@ -2,9 +2,11 @@ package io.vertx.example.chat;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonObject;
 import io.vertx.example.util.Runner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.handler.sockjs.BridgeEventType;
 import io.vertx.ext.web.handler.sockjs.BridgeOptions;
 import io.vertx.ext.web.handler.sockjs.PermittedOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
@@ -37,12 +39,18 @@ public class Server extends AbstractVerticle {
     BridgeOptions opts = new BridgeOptions()
             .addInboundPermitted(new PermittedOptions().setAddress("chat.to.server"))
             .addInboundPermitted(new PermittedOptions().setAddress("logon.to.server"))
-      .addOutboundPermitted(new PermittedOptions().setAddress("chat.to.client"));
+            .addOutboundPermitted(new PermittedOptions().setAddressRegex("\\w+\\.\\w+\\.\\w+\\.(\\d+)\\.(\\d+)"));
 
     // Create the event bus bridge and add it to the router.
     SockJSHandler ebHandler = SockJSHandler.create(vertx).bridge(opts);
-    router.route("/eventbus/*").handler(ebHandler);
-
+//    router.route("/eventbus/*").handler(ebHandler);
+    router.route("/eventbus/*").handler(SockJSHandler.create(vertx).bridge(opts, event -> {
+      if (event.type() == BridgeEventType.SOCKET_CREATED) {
+//        System.out.println("A socket was created");
+      }
+//      System.out.println(event.type());
+      event.complete(true);
+    }));
 
       router.route().handler(StaticHandler.create());
 
@@ -50,21 +58,27 @@ public class Server extends AbstractVerticle {
     vertx.createHttpServer().requestHandler(router::accept).listen(8080);
     EventBus eb = vertx.eventBus();
 
-    eb.consumer("logon.to.server").handler(message -> {
+    eb.consumer("logon.to.server").handler(search -> {
       // Create a timestamp string
       //String timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date.from(Instant.now()));
       // Send the message back out to all clients with the timestamp prepended.
       //eb.publish("chat.to.client", timestamp + ": " + "hi, and welcome to our domain, you must now complie to all of my commands");
-      System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body());
+      System.out.println(" msg: "+search.body());
     });
 
     // Register to listen for messages coming IN to the server
     eb.consumer("chat.to.server").handler(message -> {
+      JsonObject object = (JsonObject) message.body();
+
+      System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body()+" json room: "+ object.getString("room"));
+
       // Create a timestamp string
       String timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date.from(Instant.now()));
       // Send the message back out to all clients with the timestamp prepended.
-      eb.publish("chat.to.client", timestamp + ": " + message.body());
-      System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body());
+    //  eb.send("chat.to.client.1.1", timestamp + ": " +object.getString("message"));
+      eb.send("chat.to.client."+object.getString("room"), timestamp + ": " +object.getString("message"));
+      eb.send("chat.to.client."+object.getString("myroom"), timestamp + ": " +object.getString("message"));
+
     });
 
 
