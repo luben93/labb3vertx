@@ -49,14 +49,18 @@
 <script>
   var eb = new EventBus("/eventbus/");
   var path = window.location.search;
-  var room=path.match(/([1-9])+/g)[1]+"."+path.match(/([1-9])+/g)[0];
-  var myroom=path.match(/([1-9])+/g)[0]+"."+path.match(/([1-9])+/g)[1];
+  var id=path.match(/([1-9])+/g)[0];
+  var other=path.match(/([1-9])+/g)[1];
 
   eb.onopen = function () {
-    eb.registerHandler("chat.to.client."+myroom, function (err, msg) {
+    eb.registerHandler("chat.to.client."+id+"."+other, function (err, msg) {
       $('#chat').append(msg.body + "\n");
+      //$('#messages').append($('<li>').text(msg.body));
+
+      window.scrollTo(0, document.body.scrollHeight);
+
     });
-    //eb.publish("logon.to.server",room);
+    eb.publish("logon.to.server",{id:id,other:other});
   };
 
 
@@ -65,13 +69,18 @@
     if (event.keyCode == 13 || event.which == 13) {
       var message = $('#input').val();
       if (message.length > 0) {
-        eb.publish("chat.to.server", {message:message,room:room,myroom:myroom});
+        eb.publish("chat.to.server", {message:message,id:id,other:other});
         $('#input').val("");
       }
     }
   }
 </script>
-<div id="chat" class="inset"></div>
+<div id="chat" class="inset">
+
+          <!--<ul id="messages">-->
+          <!--</ul>-->
+
+</div>
 <input id="input" type="text" onkeydown="send(event)" class="inset">
 </body>
 </html>

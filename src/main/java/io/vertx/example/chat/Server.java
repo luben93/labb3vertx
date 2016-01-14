@@ -2,18 +2,21 @@ package io.vertx.example.chat;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.example.util.Runner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.StaticHandler;
-import io.vertx.ext.web.handler.sockjs.BridgeEventType;
 import io.vertx.ext.web.handler.sockjs.BridgeOptions;
 import io.vertx.ext.web.handler.sockjs.PermittedOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 
-import java.text.DateFormat;
-import java.time.Instant;
-import java.util.Date;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /**
  * A {@link io.vertx.core.Verticle} which implements a simple, realtime,
@@ -44,13 +47,7 @@ public class Server extends AbstractVerticle {
     // Create the event bus bridge and add it to the router.
     SockJSHandler ebHandler = SockJSHandler.create(vertx).bridge(opts);
 //    router.route("/eventbus/*").handler(ebHandler);
-    router.route("/eventbus/*").handler(SockJSHandler.create(vertx).bridge(opts, event -> {
-      if (event.type() == BridgeEventType.SOCKET_CREATED) {
-//        System.out.println("A socket was created");
-      }
-//      System.out.println(event.type());
-      event.complete(true);
-    }));
+    router.route("/eventbus/*").handler(SockJSHandler.create(vertx).bridge(opts));
 
       router.route().handler(StaticHandler.create());
 
@@ -58,12 +55,22 @@ public class Server extends AbstractVerticle {
     vertx.createHttpServer().requestHandler(router::accept).listen(8080);
     EventBus eb = vertx.eventBus();
 
-    eb.consumer("logon.to.server").handler(search -> {
-      // Create a timestamp string
-      //String timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date.from(Instant.now()));
-      // Send the message back out to all clients with the timestamp prepended.
-      //eb.publish("chat.to.client", timestamp + ": " + "hi, and welcome to our domain, you must now complie to all of my commands");
-      System.out.println(" msg: "+search.body());
+    //logon to server and rest get
+    eb.consumer("logon.to.server").handler(message -> {
+              System.out.println(" msg: " + message.body());
+              JsonObject object = (JsonObject) message.body();
+              JsonObject respones = new JsonObject(restGetChatHistory(object.getString("id"), object.getString("other")));
+              JsonArray arr = respones.getJsonArray("list");
+              for (Object Oline : arr) {
+                JsonObject line = (JsonObject) Oline;
+                System.out.println(line);
+                System.out.println(line.getClass());
+//        line.getString("message")
+        eb.send("chat.to.client."+object.getString("id")+"."+object.getString("other"), line.getInteger("sender") + ": " + line.getString("message"));
+              }
+
+//      eb.send("chat.to.client."+object.getString("id")+"."+object.getString("other"), line.getString("sender") + ": " +     line.getString("message")
+
     });
 
     // Register to listen for messages coming IN to the server
@@ -72,16 +79,52 @@ public class Server extends AbstractVerticle {
 
       System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body()+" json room: "+ object.getString("room"));
 
-      // Create a timestamp string
-      String timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM).format(Date.from(Instant.now()));
-      // Send the message back out to all clients with the timestamp prepended.
-    //  eb.send("chat.to.client.1.1", timestamp + ": " +object.getString("message"));
-      eb.send("chat.to.client."+object.getString("room"), timestamp + ": " +object.getString("message"));
-      eb.send("chat.to.client."+object.getString("myroom"), timestamp + ": " +object.getString("message"));
 
+      String id =object.getString("id");
+      eb.send("chat.to.client."+id+"."+object.getString("other"), id + ": " +object.getString("message"));
+      eb.send("chat.to.client."+object.getString("other")+"."+id, id + ": " +object.getString("message"));
     });
 
+  }
 
+  private String restGetChatHistory(String id,String other){
+    String fullOutput="";
 
+    try {
+
+      URL url = new URL("http://localhost:8081/rest/chat/"+id+"/"+other);
+      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn.setRequestMethod("GET");
+      conn.setRequestProperty("Accept", "application/json");
+
+      if (conn.getResponseCode() != 200) {
+        throw new RuntimeException("Failed : HTTP error code : "
+                + conn.getResponseCode());
+//        System.out.println("respone code "+conn.getResponseCode());
+      }
+
+      BufferedReader br = new BufferedReader(new InputStreamReader(
+              (conn.getInputStream())));
+
+      String output;
+      System.out.println("Output from Server .... \n");
+      while ((output = br.readLine()) != null) {
+        System.out.println(output);
+        fullOutput += output;
+      }
+
+      conn.disconnect();
+
+    } catch (MalformedURLException e) {
+
+      e.printStackTrace();
+
+    } catch (IOException e) {
+
+      e.printStackTrace();
+
+    }
+    System.out.println("all done");
+    return fullOutput;
   }
 }
