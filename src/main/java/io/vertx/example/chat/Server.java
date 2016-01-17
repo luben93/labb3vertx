@@ -66,11 +66,8 @@ public class Server extends AbstractVerticle {
                 JsonObject line = (JsonObject) Oline;
                 System.out.println(line);
                 System.out.println(line.getClass());
-//        line.getString("message")
-        eb.send("chat.to.client."+object.getString("id")+"."+object.getString("other"), line.getInteger("sender") + ": " + line.getString("message"));
+                eb.send("chat.to.client."+object.getString("id")+"."+object.getString("other"), line.getInteger("sender") + ": " + line.getString("message"));
               }
-
-//      eb.send("chat.to.client."+object.getString("id")+"."+object.getString("other"), line.getString("sender") + ": " +     line.getString("message")
 
     });
 
@@ -79,7 +76,6 @@ public class Server extends AbstractVerticle {
       JsonObject object = (JsonObject) message.body();
 
       System.out.println("adr: "+message.address()+" replyadr: "+message.replyAddress()+" header: "+message.headers()+" msg: "+message.body()+" json room: "+ object.getString("room"));
-
 
       String id =object.getString("id");
       eb.send("chat.to.client."+id+"."+object.getString("other"), id + ": " +object.getString("message"));
@@ -102,37 +98,17 @@ public class Server extends AbstractVerticle {
       conn.setRequestProperty("Content-Type", "application/json");
 
       String input = "{sender:"+id+",recvier:"+other+",message:\""+msg+"\"}";
-//      String input = "{\"sender\":"+id+",\"recvier\":"+other+",\"message\":\""+msg+"\"}";
-      System.out.println(input);
+
       OutputStream os = conn.getOutputStream();
       os.write(input.getBytes());
       os.flush();
-//
-//      if (conn.getResponseCode() != HttpURLConnection.HTTP_CREATED) {
-////        throw new RuntimeException("Failed : HTTP error code : "
-////                + conn.getResponseCode());
-//        System.out.println(conn.getResponseCode());
-//      }
-//
-//      BufferedReader br = new BufferedReader(new InputStreamReader(
-//              (conn.getInputStream())));
-//
-//      String output;
-//      System.out.println("Output from Server .... \n");
-//      while ((output = br.readLine()) != null) {
-//        System.out.println(output);
-//      }
 
       conn.disconnect();
 
     } catch (MalformedURLException e) {
-
       e.printStackTrace();
-
     } catch (IOException e) {
-
       e.printStackTrace();
-
     }
   }
 
