@@ -21,7 +21,7 @@ public class HelloWorldEmbedded {
 //      });
 
     Runner.runExample(io.vertx.example.chat.Server.class);
-    System.out.println("http://localhost:8080/");
+    System.out.println("http://localhost:8082/");
 
 
   }

@@ -52,7 +52,7 @@ public class Server extends AbstractVerticle {
       router.route().handler(StaticHandler.create());
 
     // Start the web server and tell it to use the router to handle requests.
-    vertx.createHttpServer().requestHandler(router::accept).listen(8080);
+    vertx.createHttpServer().requestHandler(router::accept).listen(8082);
     EventBus eb = vertx.eventBus();
 
     //logon to server and rest get
@@ -83,7 +83,15 @@ public class Server extends AbstractVerticle {
       String id =object.getString("id");
       eb.send("chat.to.client."+id+"."+object.getString("other"), id + ": " +object.getString("message"));
       eb.send("chat.to.client."+object.getString("other")+"."+id, id + ": " +object.getString("message"));
+      restPostMessage(id,object.getString("other"),object.getString("message"));
     });
+
+  }
+
+  //private static String rest="http://localhost:8081/rest/chat";
+  private static String rest="http://130.237.84.10:8081/starter/rest/chat";
+
+  private void restPostMessage(String id,String other,String msg){
 
   }
 
@@ -92,7 +100,7 @@ public class Server extends AbstractVerticle {
 
     try {
 
-      URL url = new URL("http://localhost:8081/rest/chat/"+id+"/"+other);
+      URL url = new URL(rest+"/"+id+"/"+other);
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("GET");
       conn.setRequestProperty("Accept", "application/json");
